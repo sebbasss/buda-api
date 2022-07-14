@@ -4,51 +4,56 @@ require 'open-uri'
 class Api::V1::MarketsController < ApplicationController
 
   def index
-    spreads = get_spreads
+    spreads = extract_spreads
     markets = []
     spreads.each do |spread|
-      market = Hash.new
+      market = {}
       market[:name] = spread[:name]
       market[:spread] = spread[:spread].to_f
       markets.push(market)
     end
-    render json: markets
+    data = { "markets": markets }
+    render json: data
   end
 
   def show
     name = params[:id]
-    res = call_api("https://www.buda.com/api/v2/markets/#{name}/ticker")
-    market = Hash.new
-    market[:name] = res["ticker"]["market_id"]
-    market[:spread] = ((res["ticker"]["min_ask"][0].to_f - res["ticker"]["max_bid"][0].to_f) / res["ticker"]["min_ask"][0].to_f)
-    render json: market
+    response = call_api("https://www.buda.com/api/v2/markets/#{name}/ticker")
+    market = {}
+    market[:name] = response['ticker']['market_id']
+    market[:spread] = calc_spread(response['ticker'])
+    data = { 'market': market }
+    render json: data
   end
 
   private
 
   def call_api(url)
-    res_serialized = URI.open(url).read
-    JSON.parse(res_serialized)
+    response_serialized = URI.open(url).read
+    JSON.parse(response_serialized)
   end
 
-  def get_names
-    res = call_api('https://www.buda.com/api/v2/markets')
-    all_markets = res["markets"]
+  def calc_spread(market)
+    ((market['min_ask'][0].to_f - market['max_bid'][0].to_f) / market['min_ask'][0].to_f).round(5)
+  end
+
+  def extract_names
+    response = call_api('https://www.buda.com/api/v2/markets')
+    markets = response['markets']
     names = []
-    all_markets.each do |market|
-      names.push(market["id"])
+    markets.each do |market|
+      names.push(market['id'])
     end
     names
   end
 
-  def get_spreads
-    names = get_names
+  def extract_spreads
+    names = extract_names
     spreads = []
     names.each do |name|
-      res = call_api("https://www.buda.com/api/v2/markets/#{name}/ticker")
-      market = res["ticker"]
-      spreads.push({ name: name,
-                     spread: ((market['min_ask'][0].to_f - market['max_bid'][0].to_f) / market['min_ask'][0].to_f) })
+      response = call_api("https://www.buda.com/api/v2/markets/#{name}/ticker")
+      market = response['ticker']
+      spreads.push({ name: name, spread: calc_spread(market) })
     end
     spreads
   end
