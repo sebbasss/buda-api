@@ -26,6 +26,14 @@ class Api::V1::MarketsController < ApplicationController
     render json: data
   end
 
+  def add_alert
+    @alert = Alert.new
+    @alert.market_name = params[:id]
+    @alert.spread = params[:alert_spread]
+    @alert.save
+    render json: @alert
+  end
+
   private
 
   def call_api(url)
