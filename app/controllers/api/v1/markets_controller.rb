@@ -3,6 +3,7 @@ require 'open-uri'
 
 class Api::V1::MarketsController < ApplicationController
 
+  # Used to display all markets, extracting them from the api or updating their spread.
   def index
     spreads = extract_spreads
     markets = []
@@ -24,6 +25,7 @@ class Api::V1::MarketsController < ApplicationController
     render json: data
   end
 
+  # Used to show only one market, if it exists, update its information, extract all markets info.
   def show
     if !extract_spreads[0].has_value?(params[:id].upcase)
       render json: "Market not found"
@@ -47,6 +49,7 @@ class Api::V1::MarketsController < ApplicationController
     end
   end
 
+  # Used to add an alert spread.
   def add_alert
     if Market.find_by name: params[:market_id].upcase
       market = Market.find_by name: params[:market_id].upcase
@@ -62,10 +65,12 @@ class Api::V1::MarketsController < ApplicationController
 
   private
 
+  # Structuring the data to be displayed in json.
   def market_info(market)
     { name: market.name, spread: market.spread, alert_spread: market.alert_spread }
   end
 
+  # Used to calculate to fill the database when database does not contin any markets.
   def fill_db
     spreads = extract_spreads
     spreads.each do |spread|
@@ -74,15 +79,18 @@ class Api::V1::MarketsController < ApplicationController
     end
   end
 
+  # Used to call the api and parse the json response.
   def call_api(url)
     response_serialized = URI.open(url).read
     JSON.parse(response_serialized)
   end
 
+  # Used to calculate the spread.
   def calc_spread(market)
     ((market['min_ask'][0].to_f - market['max_bid'][0].to_f) / market['min_ask'][0].to_f).round(6).to_s
   end
 
+  # Used to get the names of all markets, later used to get the spreads.
   def extract_names
     response = call_api('https://www.buda.com/api/v2/markets')
     markets = response['markets']
@@ -93,6 +101,7 @@ class Api::V1::MarketsController < ApplicationController
     names
   end
 
+  # Used to calculate the spreads for each market, then saving them in an array.
   def extract_spreads
     names = extract_names
     spreads = []
