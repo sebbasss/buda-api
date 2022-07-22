@@ -48,12 +48,16 @@ class Api::V1::MarketsController < ApplicationController
   end
 
   def add_alert
-    market = Market.find_by name: params[:market_id].upcase
-    alert_spread = params[:alert_spread].gsub!(',', '.')
-    market.alert_spread = alert_spread
-    market.save
-    market_data  = market_info(market)
-    render json: { market: market_data }
+    if Market.find_by name: params[:market_id].upcase
+      market = Market.find_by name: params[:market_id].upcase
+      alert_spread = params[:alert_spread].gsub!(',', '.')
+      market.alert_spread = alert_spread
+      market.save
+      market_data  = market_info(market)
+      redirect_to api_v1_markets_path
+    else
+      render json: "Market not found"
+    end
   end
 
   private
