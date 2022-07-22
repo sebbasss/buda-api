@@ -6,27 +6,69 @@ class Api::V1::MarketsController < ApplicationController
   def index
     spreads = extract_spreads
     markets = []
-    spreads.each do |spread|
-      market = {}
-      market[:name] = spread[:name]
-      market[:spread] = spread[:spread].to_f
-      markets.push(market)
+    if Market.exists?
+      saved_markets = Market.order(created_at: :asc)
+      saved_markets.each_with_index do |market, index|
+        market.spread = spreads[index][:spread]
+        market.save
+        markets.push(market_info(market))
+      end
+    else
+      spreads.each do |spread|
+        market = Market.new(name: spread[:name], spread: spread[:spread])
+        market.save
+        markets.push(market_info(market))
+      end
     end
-    data = { "markets": markets }
+    data = { markets: markets }
     render json: data
   end
 
   def show
-    name = params[:id]
-    response = call_api("https://www.buda.com/api/v2/markets/#{name}/ticker")
-    market = {}
-    market[:name] = response['ticker']['market_id']
-    market[:spread] = calc_spread(response['ticker'])
-    data = { 'market': market }
-    render json: data
+    if !extract_spreads[0].has_value?(params[:id].upcase)
+      render json: "Market not found"
+    else
+      response = call_api("https://www.buda.com/api/v2/markets/#{params[:id]}/ticker")
+      market_data = {}
+      if Market.exists?
+        market = Market.find_by name: params[:id].upcase
+        market.spread = calc_spread(response['ticker'])
+        market.save
+        market_data = market_info(market)
+      else
+        fill_db
+        market = Market.find_by name: params[:id].upcase
+        market.spread = calc_spread(response['ticker'])
+        market.save
+        market_data = market_info(market)
+      end
+      data = { market: market_data }
+      render json: data
+    end
+  end
+
+  def add_alert
+    market = Market.find_by name: params[:market_id].upcase
+    alert_spread = params[:alert_spread].gsub!(',', '.')
+    market.alert_spread = alert_spread
+    market.save
+    market_data  = market_info(market)
+    render json: { market: market_data }
   end
 
   private
+
+  def market_info(market)
+    { name: market.name, spread: market.spread, alert_spread: market.alert_spread }
+  end
+
+  def fill_db
+    spreads = extract_spreads
+    spreads.each do |spread|
+      market = Market.new(name: spread[:name], spread: spread[:spread])
+      market.save
+    end
+  end
 
   def call_api(url)
     response_serialized = URI.open(url).read
@@ -34,7 +76,7 @@ class Api::V1::MarketsController < ApplicationController
   end
 
   def calc_spread(market)
-    ((market['min_ask'][0].to_f - market['max_bid'][0].to_f) / market['min_ask'][0].to_f).round(5)
+    ((market['min_ask'][0].to_f - market['max_bid'][0].to_f) / market['min_ask'][0].to_f).round(6).to_s
   end
 
   def extract_names
