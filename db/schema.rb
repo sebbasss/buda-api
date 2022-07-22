@@ -10,8 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2022_07_14_165817) do
+ActiveRecord::Schema[7.0].define(version: 2022_07_15_143434) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "alerts", force: :cascade do |t|
+    t.string "market_name"
+    t.string "spread"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "markets", force: :cascade do |t|
+    t.string "name"
+    t.string "spread"
+    t.string "alert_spread"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
 
 end
