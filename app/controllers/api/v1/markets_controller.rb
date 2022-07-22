@@ -40,8 +40,6 @@ class Api::V1::MarketsController < ApplicationController
       else
         fill_db
         market = Market.find_by name: params[:id].upcase
-        market.spread = calc_spread(response['ticker'])
-        market.save
         market_data = market_info(market)
       end
       data = { market: market_data }
